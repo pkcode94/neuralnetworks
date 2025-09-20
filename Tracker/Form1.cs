@@ -95,36 +95,6 @@ namespace Tracker
 
         private void Form1_Load(object sender, EventArgs e)
         {
-            timer1.Interval = 5000;
-
-            MessageBox.Show("TorchSharp Model Definition Example");
-
-            // Setze einen manuellen Seed für Reproduzierbarkeit
-            torch.manual_seed(42);
-
-            // Erstelle eine Modellinstanz
-            var model = new MyComplexModel();
-
-            // Gib eine Zusammenfassung der Modellschichten und Parameter aus
-            MessageBox.Show("\nModellarchitektur:");
-            
-
-
-            // Definiere eine konzeptionelle Eingabedatenform:
-            // (batch_size, sequence_length, embedding_dim)
-            int batchSize = 1;
-            int sequenceLength = 10;
-            int inputFeatures = 256;
-            var inputTensor = torch.randn(batchSize, sequenceLength, inputFeatures);
-
-            // Führe einen Forward-Pass mit den Dummy-Eingabedaten durch
-            MessageBox.Show("\nFühre einen Forward-Pass mit Dummy-Daten durch...");
-            var output = model.forward(inputTensor);
-
-            MessageBox.Show("\nForward-Pass abgeschlossen.");
-            MessageBox.Show($"Shape des Eingabe-Tensors: {inputTensor.shape}");
-            MessageBox.Show($"Shape des Ausgabe-Tensors: {output.shape}");
-
         }
     }
 }
