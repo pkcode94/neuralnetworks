@@ -1,111 +1,317 @@
-﻿using System;
+﻿using Numpy.Models;
+using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
 using static Tracker.nn;
+//self referential compound feedback loop
+//blind feedback loop
+//transition
+//input invariance threshold
+//bruteforce conversation fragments to neural network mapping until pattern is consistent
+//gradient descent relative to input
+//bruteforcing combinatoric iomapping gradient X input where the gradient strengthens cumulatively with each successive input 
+//gradient decay
+//normalization
+//learning rate
+//extract sensitive variables
+//io ambiguity
+//decreasing options from infinite possible patterns will eventually hit the right pattern
+//bruteforcing common noise using gravity and location i know that you know that i know....
+//consider sensory neuron count when crawling google
+//abe to decrypt encryption by learning patterns
+//every encryption system is a deterministic information transformation system posed as a stochastic system
+public class ipvbruteforce
+{
+
+}
+public class pingscanner
+{
+
+}
+
 
 namespace Tracker
-{//unlearnable
+{
+    // Main class acting as a container for all related classes.
     internal class nn
     {
-        //self referential compound feedback loop
-        //blind feedback loop
-        //transition
-        //input invariance threshold
-        //bruteforce conversation fragments to neural network mapping until pattern is consistent
-        //gradient descent relative to input
-        //bruteforcing combinatoric iomapping gradient X input where the gradient strengthens cumulatively with each successive input 
-        //gradient decay
-        //normalization
-        //learning rate
-        //extract sensitive variables
-        //io ambiguity
-        //decreasing options from infinite possible patterns will eventually hit the right pattern
-        //bruteforcing common noise using gravity and location i know that you know that i know....
-        //consider sensory neuron count when crawling google
-        //abe to decrypt encryption by learning patterns
-        //every encryption system is a deterministic information transformation system posed as a stochastic system
+        // Data structure to hold an input/output vector.
         public class IO
         {
             public int[] IOVECTOR;
         }
+
+        // Data structure to define a slice of the input/output vector.
         public class compositedimensionvector
         {
-            // bool active = true;
             public int length;
             public int offset;
         }
-        public class IOdimensionsswitch
+
+        // Manages a list of different IOdimensions objects.
+        public class DimensionalSwitch
         {
             public List<IOdimensions> dimensions = new List<IOdimensions>();
-            public int activedimensionindex = 0;
-            public IOdimensions activedimensions
+            public int activeIndex = 0;
+
+            public IOdimensions ActiveDimension
             {
                 get
                 {
-                    return dimensions[activedimensionindex];
+                    if (dimensions.Count == 0 || activeIndex >= dimensions.Count)
+                    {
+                        return null;
+                    }
+                    return dimensions[activeIndex];
                 }
             }
         }
-        public class ipvbruteforce
-        {
 
-        }
-        public class pingscanner
+        // Manages the contextual state.
+        public class ContextualSwitch
         {
-
+            public int activeIndex = 0;
+            public int maxIndex = 0;
         }
+
+        // Manages the time-based state.
+        public class TimeSwitch
+        {
+            public int activeIndex = 0;
+            public int maxIndex = 0;
+        }
+
+        // Defines and populates the specific dimensions and their mappings.
         public class IOdimensions
         {
             public List<compositedimensionvector> dimensionvector = new List<compositedimensionvector>();
             public int maxlength;
-            public int offsetininputseries = 0;
+
+            // Dictionary to store the mapping from an input slice and a switch index to an output slice.
+            public Dictionary<Tuple<int[], int, int>, int[]> iomatrix = new Dictionary<Tuple<int[], int, int>, int[]>(new TupleIntArrayIntIntEqualityComparer());
+
             public void generatecompositedimensionvector()
             {
-                for (int i = 0; i < maxlength; i++)
+                for (int offset = 0; offset < maxlength; offset++)
                 {
-                     
+                    for (int length = 1; offset + length <= maxlength; length++)
+                    {
+                        compositedimensionvector dimension = new compositedimensionvector();
+                        dimension.offset = offset;
+                        dimension.length = length;
+                        dimensionvector.Add(dimension);
+                    }
                 }
             }
 
-            public class iomapping
+            // Populates the iomatrix with input-output pairs based on the given contextual and time switches.
+            public void populateiomatrix(List<IO> inputseries, List<IO> outputseries, ContextualSwitch contextSwitch, TimeSwitch timeSwitch)
             {
-                public Dictionary<int[], int[]> iomatrix = new Dictionary<int[], int[]>();
-            }
-            public void populateinputvectors(List<IO> inputseries)
-            {
-                foreach (var dimension in dimensionvector)
+                for (int i = 0; i < inputseries.Count && i < outputseries.Count; i++)
                 {
-                    foreach (var input in inputseries)
+                    var input = inputseries[i];
+                    var output = outputseries[i];
+
+                    foreach (var dimension in dimensionvector)
                     {
-                        if (input.IOVECTOR.Count() >= dimension.offset + dimension.length && dimension.offset >= 0 && dimension.length > 0 && dimension.dimensionindex < maxlength)
+                        if (input.IOVECTOR.Length >= dimension.offset + dimension.length &&
+                            output.IOVECTOR.Length >= dimension.offset + dimension.length)
                         {
-                            int[] slice = new int[dimension.length];
-                            Array.Copy(input.IOVECTOR, dimension.offset, slice,offsetininputseries, dimension.length);
-                            iomapping mapping = new iomapping();
-                            if (!mapping.iomatrix.ContainsKey(slice))
+                            int[] inputSlice = new int[dimension.length];
+                            int[] outputSlice = new int[dimension.length];
+                            Array.Copy(input.IOVECTOR, dimension.offset, inputSlice, 0, dimension.length);
+                            Array.Copy(output.IOVECTOR, dimension.offset, outputSlice, 0, dimension.length);
+
+                            var key = new Tuple<int[], int, int>(inputSlice, contextSwitch.activeIndex, timeSwitch.activeIndex);
+                            if (!iomatrix.ContainsKey(key))
                             {
-                                int[] output = mapping.iomatrix[slice];
+                                iomatrix.Add(key, outputSlice);
                             }
                         }
                     }
                 }
             }
-
-
         }
-        IOdimensionsswitch inputswitch = new IOdimensionsswitch();
-        IOdimensionsswitch outputswitch = new IOdimensionsswitch();
-        public List<IO> inputseries = new List<IO>();
-        public List<IO> outputseries = new List<IO>();
-        public void processinputseries()
+
+        // Custom equality comparer for integer arrays.
+        public class IntArrayEqualityComparer : IEqualityComparer<int[]>
         {
-            foreach (var input in inputseries)
+            public bool Equals(int[] x, int[] y)
             {
-                foreach (var inputdimension in inputswitch.dimensions)
+                if (x == null || y == null) return false;
+                if (x.Length != y.Length) return false;
+                for (int i = 0; i < x.Length; i++)
                 {
-                    inputdimension.populateinputvectors(inputseries);
+                    if (x[i] != y[i]) return false;
+                }
+                return true;
+            }
+
+            public int GetHashCode(int[] obj)
+            {
+                if (obj == null) return 0;
+                unchecked
+                {
+                    int hash = 17;
+                    foreach (var element in obj)
+                    {
+                        hash = hash * 31 + element.GetHashCode();
+                    }
+                    return hash;
+                }
+            }
+        }
+
+        // Custom equality comparer for the Tuple key.
+        public class TupleIntArrayIntIntEqualityComparer : IEqualityComparer<Tuple<int[], int, int>>
+        {
+            private readonly IEqualityComparer<int[]> intArrayComparer = new IntArrayEqualityComparer();
+
+            public bool Equals(Tuple<int[], int, int> x, Tuple<int[], int, int> y)
+            {
+                if (ReferenceEquals(x, y)) return true;
+                if (ReferenceEquals(x, null) || ReferenceEquals(y, null)) return false;
+                return intArrayComparer.Equals(x.Item1, y.Item1) && x.Item2 == y.Item2 && x.Item3 == y.Item3;
+            }
+
+            public int GetHashCode(Tuple<int[], int, int> obj)
+            {
+                if (obj == null) return 0;
+                unchecked
+                {
+                    int hash = 17;
+                    hash = hash * 31 + intArrayComparer.GetHashCode(obj.Item1);
+                    hash = hash * 31 + obj.Item2.GetHashCode();
+                    hash = hash * 31 + obj.Item3.GetHashCode();
+                    return hash;
+                }
+            }
+        }
+
+        // The primary class that holds the series data and manages the switches.
+        public class MainProcessor
+        {
+            private DimensionalSwitch inputDimensionalSwitch = new DimensionalSwitch();
+            private DimensionalSwitch outputDimensionalSwitch = new DimensionalSwitch();
+            private ContextualSwitch inputContextualSwitch = new ContextualSwitch();
+            private ContextualSwitch outputContextualSwitch = new ContextualSwitch();
+            private TimeSwitch inputTimeSwitch = new TimeSwitch();
+            private TimeSwitch outputTimeSwitch = new TimeSwitch();
+
+            public List<IO> inputseries = new List<IO>();
+            public List<IO> outputseries = new List<IO>();
+
+            public void InitializeSwitches(int numDimensions, int numContexts, int numTimes, int maxLength)
+            {
+                inputContextualSwitch.maxIndex = numContexts - 1;
+                outputContextualSwitch.maxIndex = numContexts - 1;
+                inputTimeSwitch.maxIndex = numTimes - 1;
+                outputTimeSwitch.maxIndex = numTimes - 1;
+
+                for (int i = 0; i < numDimensions; i++)
+                {
+                    var inputDim = new IOdimensions();
+                    inputDim.maxlength = maxLength;
+                    inputDim.generatecompositedimensionvector();
+                    inputDimensionalSwitch.dimensions.Add(inputDim);
+
+                    var outputDim = new IOdimensions();
+                    outputDim.maxlength = maxLength;
+                    outputDim.generatecompositedimensionvector();
+                    outputDimensionalSwitch.dimensions.Add(outputDim);
+                }
+            }
+
+            public void BruteForceCombinatorially()
+            {
+                Console.WriteLine("Brute-forcing combinatorial switches...");
+                for (int dimIndex = 0; dimIndex < inputDimensionalSwitch.dimensions.Count; dimIndex++)
+                {
+                    for (int contextIndex = 0; contextIndex <= inputContextualSwitch.maxIndex; contextIndex++)
+                    {
+                        // The time switch is managed externally and not part of the combinatorial brute-force.
+                        // We use the currently set time index.
+
+                        SwitchDimensionalContext(dimIndex);
+                        SwitchContextualMode(contextIndex);
+
+                        var activeInputDimension = inputDimensionalSwitch.ActiveDimension;
+                        var activeOutputDimension = outputDimensionalSwitch.ActiveDimension;
+                        if (activeInputDimension != null && activeOutputDimension != null)
+                        {
+                            activeInputDimension.populateiomatrix(inputseries, outputseries, inputContextualSwitch, inputTimeSwitch);
+                        }
+                    }
+                }
+                Console.WriteLine("Brute-force complete.");
+            }
+
+            public List<Tuple<int, int, int>> GetPossibilitySpace(IO new_input)
+            {
+                List<Tuple<int, int, int>> possibilities = new List<Tuple<int, int, int>>();
+
+                for (int dimIndex = 0; dimIndex < inputDimensionalSwitch.dimensions.Count; dimIndex++)
+                {
+                    for (int contextIndex = 0; contextIndex <= inputContextualSwitch.maxIndex; contextIndex++)
+                    {
+                        for (int timeIndex = 0; timeIndex <= inputTimeSwitch.maxIndex; timeIndex++)
+                        {
+                            SwitchDimensionalContext(dimIndex);
+                            SwitchContextualMode(contextIndex);
+                            SwitchTime(timeIndex);
+
+                            var activeInputDimension = inputDimensionalSwitch.ActiveDimension;
+                            if (activeInputDimension != null)
+                            {
+                                foreach (var dimensionVector in activeInputDimension.dimensionvector)
+                                {
+                                    if (new_input.IOVECTOR.Length >= dimensionVector.offset + dimensionVector.length)
+                                    {
+                                        int[] inputSlice = new int[dimensionVector.length];
+                                        Array.Copy(new_input.IOVECTOR, dimensionVector.offset, inputSlice, 0, dimensionVector.length);
+
+                                        var key = new Tuple<int[], int, int>(inputSlice, contextIndex, timeIndex);
+
+                                        if (activeInputDimension.iomatrix.ContainsKey(key))
+                                        {
+                                            possibilities.Add(new Tuple<int, int, int>(dimIndex, contextIndex, timeIndex));
+                                            break;
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
+                return possibilities.Distinct().ToList();
+            }
+
+            public void SwitchDimensionalContext(int index)
+            {
+                if (index >= 0 && index < inputDimensionalSwitch.dimensions.Count)
+                {
+                    inputDimensionalSwitch.activeIndex = index;
+                    outputDimensionalSwitch.activeIndex = index;
+                }
+            }
+
+            public void SwitchContextualMode(int index)
+            {
+                if (index >= 0 && index <= inputContextualSwitch.maxIndex)
+                {
+                    inputContextualSwitch.activeIndex = index;
+                    outputContextualSwitch.activeIndex = index;
+                }
+            }
+
+            public void SwitchTime(int index)
+            {
+                if (index >= 0 && index <= inputTimeSwitch.maxIndex)
+                {
+                    inputTimeSwitch.activeIndex = index;
+                    outputTimeSwitch.activeIndex = index;
                 }
             }
         }
