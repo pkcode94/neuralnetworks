@@ -1,36 +1,6 @@
-﻿using Numpy.Models;
-using System;
+﻿using System;
 using System.Collections.Generic;
 using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
-using static Tracker.nn;
-//self referential compound feedback loop
-//blind feedback loop
-//transition
-//input invariance threshold
-//bruteforce conversation fragments to neural network mapping until pattern is consistent
-//gradient descent relative to input
-//bruteforcing combinatoric iomapping gradient X input where the gradient strengthens cumulatively with each successive input 
-//gradient decay
-//normalization
-//learning rate
-//extract sensitive variables
-//io ambiguity
-//decreasing options from infinite possible patterns will eventually hit the right pattern
-//bruteforcing common noise using gravity and location i know that you know that i know....
-//consider sensory neuron count when crawling google
-//abe to decrypt encryption by learning patterns
-//every encryption system is a deterministic information transformation system posed as a stochastic system
-public class ipvbruteforce
-{
-
-}
-public class pingscanner
-{
-
-}
-
 
 namespace Tracker
 {
@@ -224,6 +194,13 @@ namespace Tracker
                 }
             }
 
+            // Sets the active context to the default (index 0).
+            public void SetDefaultContext()
+            {
+                inputContextualSwitch.activeIndex = 0;
+                outputContextualSwitch.activeIndex = 0;
+            }
+
             public void BruteForceCombinatorially()
             {
                 Console.WriteLine("Brute-forcing combinatorial switches...");
@@ -231,9 +208,6 @@ namespace Tracker
                 {
                     for (int contextIndex = 0; contextIndex <= inputContextualSwitch.maxIndex; contextIndex++)
                     {
-                        // The time switch is managed externally and not part of the combinatorial brute-force.
-                        // We use the currently set time index.
-
                         SwitchDimensionalContext(dimIndex);
                         SwitchContextualMode(contextIndex);
 
