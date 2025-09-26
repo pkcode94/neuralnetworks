@@ -16,6 +16,7 @@ using TorchSharp;
 using TorchSharp.Modules;
 using static TorchSharp.torch;
 using static TorchSharp.torch.nn;
+using System.Security.Cryptography;
 
 
 namespace Tracker
@@ -63,23 +64,33 @@ namespace Tracker
         }
         private static readonly HttpClient client = new HttpClient();
         //calculate the powerset of all current patterns
-        public void recalculatesubpatterns()
+        public void recalculatesubpatternswithminusoneforplaceholderkeepallsetssamesizesfillemptyspaceswithminusone()
         {
             subpatterns.Clear();
             int n = totalpattern.patternsequence.Count;
-            for (int i = 0; i < (1 << n); i++)
+            int patterncount = 1 << n; // 2^n possible patterns
+            for (int i = 1; i < patterncount; i++) // start from 1 to avoid empty pattern
             {
                 pattern p = new pattern();
                 for (int j = 0; j < n; j++)
                 {
-                    if ((i & (1 << j)) > 0)
+                    if ((i & (1 << j)) != 0)
                     {
                         p.patternsequence.Add(totalpattern.patternsequence[j]);
                     }
+                    else
+                    {
+                        p.patternsequence.Add(-1); // placeholder for missing element
+                    }
                 }
-                if (p.patternsequence.Count > 0)
-                    subpatterns.Add(p);
+                subpatterns.Add(p);
             }
+        }
+        public Dictionary<int, int> PossibleConversationidToConversationPartnerMapping = new Dictionary<int, int>();
+       
+        public void CombinatoricallyBruteforcePossibleConversationidToConversationPartnerMapping()
+        {
+            
         }
         public pattern subtractpatternsetfrompatternset(pattern original, pattern toremove)
         {
@@ -93,59 +104,73 @@ namespace Tracker
             }
             return result;
         }
-
+       
         public void convertpowersetofpatternstoconversationwhereelementsareuniquefromtotalpatterns()
         {
-            for (int i = 0; i < subpatterns.Count; i++)
+            
+        }
+        public class conversationtree
+        {
+            public List<conversationtree> children = new List<conversationtree>();
+            public pattern nodepattern;
+            public conversationtree parent;
+            public int conversationid;
+            public int conversationpartnerid;
+            public void removepatternswithambiguitiesatpositionexceptwherevalueisminusone(List<pattern> availablepatterns)
             {
-                for (int j = 0; j < subpatterns.Count; j++)
+
+                List<pattern> copy = new List<pattern>(availablepatterns);
+                foreach (var pattern in availablepatterns)
                 {
-                    if (i != j)
+                    for (int i = 0; i < pattern.patternsequence.Count; i++)
                     {
-                        //if patterns are disjoint
-                        if (!subpatterns[i].patternsequence.Intersect(subpatterns[j].patternsequence).Any())
+                        if (pattern.patternsequence[i] != -1)
                         {
-                            pattern combined = new pattern();
-                            combined.patternsequence.AddRange(subpatterns[i].patternsequence);
-                            combined.patternsequence.AddRange(subpatterns[j].patternsequence);
-                            if (combined.patternsequence.Count == totalpattern.patternsequence.Count)
+                            foreach (var otherpattern in availablepatterns)
                             {
-                                PossibleConversations.Add(new List<pattern> { subpatterns[i], subpatterns[j] });
+                                if (otherpattern != pattern && otherpattern.patternsequence[i] == pattern.patternsequence[i])
+                                {
+                                   copy.Remove(otherpattern);
+                                    break;
+                                }
                             }
                         }
                     }
                 }
+
+
+
+                }
+            public void bruteforce(List<pattern> availablepatterns)
+            {
+                removepatternswithambiguitiesatpositionexceptwherevalueisminusone(availablepatterns);
+                if (availablepatterns.Count == 0)
+                {
+                    return;
+                }
+                foreach (var p in availablepatterns)
+                {
+                    conversationtree child = new conversationtree();
+                    child.nodepattern = p;
+                    child.parent = this;
+                    children.Add(child);
+                    var newavailablepatterns = new List<pattern>(availablepatterns);
+                    newavailablepatterns.Remove(p);
+                    child.bruteforce(newavailablepatterns);
+                }
+            }
+            
+            public void compiletosignal()
+            {
+
+            }
+            public void reversefromsignal()
+            {
+
             }
         }
         
-        private void timer1_Tick(object sender, EventArgs e)
-        {
-            string url = txturl.Text;
-
-            // This line blocks the thread until the response is received
-            HttpResponseMessage response = client.GetAsync(url).Result;
-
-            // Throws an exception on non-success status codes
-            response.EnsureSuccessStatusCode();
-
-            // This line blocks the thread until the content is read
-            string content = response.Content.ReadAsStringAsync().Result;
-            string[] split = content.Split(new string[] { "<a href=\"/?word=" }, StringSplitOptions.RemoveEmptyEntries);
-            List<string> result = new List<string>();
-            for (int i = 10; i < split.Count(); i++)
-            {
-                result.Add(split[i].Split(new string[] { "\">" }, StringSplitOptions.RemoveEmptyEntries)[0]);
-                listBox1.Items.Add(result[result.Count - 1]);
-                listBox1.TopIndex = listBox1.Items.Count - 1;
-                int newid = idmanager.getid();
-                stringtoidmapping[result[result.Count - 1]] = newid;
-                totalpattern.patternsequence.Add(newid);
-                recalculatesubpatterns();
-                convertpowersetofpatternstoconversationwhereelementsareuniquefromtotalpatterns();
-                lstconvos.Items.Clear();
-            }
-
-        }
+   
 
         private void listBox1_SelectedIndexChanged(object sender, EventArgs e)
         {
@@ -190,7 +215,9 @@ namespace Tracker
                 totalpattern.patternsequence.Add(newid);
 
             }
-            recalculatesubpatterns();convertpowersetofpatternstoconversationwhereelementsareuniquefromtotalpatterns();
+            recalculatesubpatternswithminusoneforplaceholderkeepallsetssamesizesfillemptyspaceswithminusone();
+            conversationtree tree = new conversationtree();
+            tree.bruteforce(subpatterns);
             lstconvos.Items.Clear();
             foreach (var convo in PossibleConversations)
             {
